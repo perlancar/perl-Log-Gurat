@@ -42,8 +42,12 @@ sub import {
                 printf @_;
             };
         } else {
-            # this causes some startup cost, we only care about optimizing away
-            # when in production
+            # optimize away, this code is stolen from Exporter::ConditionalSubs.
+
+            # due to loading of B::CallChecker and B::Generate, this causes some
+            # startup cost, we only care about optimizing away when in
+            # production, the cost of empty sub call is ~80ns (on a Core i5-2400
+            # 3GHz) so it's only significant in a very tight loop
             if ($ENV{LOG_PRODUCTION}) {
                 require B::CallChecker;
                 require B::Generate;
@@ -91,11 +95,27 @@ In your application:
 =head1 DESCRIPTION
 
 Another logging framework. Like L<Log::Any>, it separates producers and
-consumers. Unlike L<Log::Any>, it uses plain functions (non-OO) to enable Perl
-to optimize away the logging statements when unnecessary.
+consumers. Unlike L<Log::Any>, it uses plain functions (non-OO).
 
+Some features:
 
+=over
 
+=item * Option to optimize away the logging statements when unnecessary:
+
+ % perl -MLog::Gurat -MO=Deparse -e'log_warn "foo\n"; log_debug "bar\n"'
+ log_warn("foo\n");
+ log_debug("bar\n");
+ -e syntax OK
+
+ % LOG_PRODUCTION=1 perl -MLog::Gurat -MO=Deparse -e'log_warn "foo\n"; log_debug "bar\n"'
+ log_warn("foo\n");
+ '???';
+ -e syntax OK
+
+=item * Configurable levels via environment variables
+
+=back
 
 
 =head1 SEE ALSO
